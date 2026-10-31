@@ -955,6 +955,28 @@
       }
     }
   </style>
+<style>
+  #games { position: relative; z-index: 1; padding: 80px 48px; max-width: 1200px; margin: 0 auto; }
+  .game-tabs { display: flex; gap: 16px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap; }
+  .game-tab.active { background: linear-gradient(135deg, var(--cyan), #00ffff); color: var(--bg); border-color: transparent; }
+  .game-frame {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    background: rgba(9, 18, 34, 0.6); backdrop-filter: blur(20px);
+    border: 1px solid rgba(57, 231, 255, 0.25); border-radius: 40px; padding: 28px;
+    max-width: 460px; margin: 0 auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  #gameCanvas {
+    width: 100%; max-width: 360px; aspect-ratio: 2 / 3; display: block;
+    border-radius: 20px; background: #050b1d; border: 1px solid rgba(57, 231, 255, 0.3);
+    touch-action: none; cursor: pointer;
+  }
+  .game-help { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; letter-spacing: 0.15em; color: var(--soft); text-align: center; text-transform: uppercase; }
+  .game-pad { display: none; gap: 20px; }
+  .game-pad.show { display: flex; }
+  .game-pad button { width: 90px; font-size: 1.1rem; padding: 12px 0; }
+  @media (max-width: 800px) { #games { padding: 60px 24px; } }
+</style>
 </head>
 <body>
 
@@ -1137,6 +1159,32 @@
     </div>
   </div>
 </section>
+
+<div class="divider">
+  <div class="divider-line"></div>
+  <div class="divider-text">Arcade</div>
+  <div class="divider-line"></div>
+</div>
+
+<section id="games">
+  <div class="section-header">
+    <h2 class="section-title">Play Zone</h2>
+    <p class="section-sub">Take a break, beat the high score.</p>
+  </div>
+  <div class="game-tabs">
+    <button class="btn btn-ghost game-tab active" data-mode="flappy">Flappy Blob</button>
+    <button class="btn btn-ghost game-tab" data-mode="race">Voltixy Racer</button>
+  </div>
+  <div class="game-frame">
+    <canvas id="gameCanvas"></canvas>
+    <div class="game-pad" id="gamePad">
+      <button class="btn btn-ghost" id="padL">◀</button>
+      <button class="btn btn-ghost" id="padR">▶</button>
+    </div>
+    <div class="game-help" id="gameHelp"></div>
+  </div>
+</section>
+
 
 <!-- FOOTER -->
 <footer id="footerContact" class="glass-light">
@@ -1593,6 +1641,239 @@
     observer.observe(card);
   });
 </script>
+<script>
+(function () {
+  const cv = document.getElementById('gameCanvas'), ctx = cv.getContext('2d');
+  const W = 360, H = 540, DPR = 2;
+  cv.width = W * DPR; cv.height = H * DPR; ctx.scale(DPR, DPR);
+  const sec = document.getElementById('games'), pad = document.getElementById('gamePad'), help = document.getElementById('gameHelp');
+
+  let mode = 'flappy', state = 'idle', score = 0, last = 0, t = 0;
+  const best = { flappy: 0, race: 0 };
+
+  // ---------- FLAPPY ----------
+  const GAP = 150, PW = 54, BX = 90, BR = 15;
+  let blob, pipes, gx = 0, shake = 0, fx = [];
+  const stars = Array.from({ length: 45 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: Math.random() * 1.6 + 0.4 }));
+  function burst(x, y, c, n, sp) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = Math.random() * sp; fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, l: 1, c, r: Math.random() * 2.5 + 1 }); } }
+  function fReset() { blob = { y: H / 2, vy: 0 }; pipes = []; score = 0; }
+  function fUpdate(dt) {
+    gx = (gx + 1.2 * dt) % 30;
+    if (Math.random() < 0.7) fx.push({ x: BX - 12, y: blob.y + (Math.random() - 0.5) * 14, vx: -2 - Math.random(), vy: (Math.random() - 0.5) * 0.6, l: 1, c: '#FE01AC', r: Math.random() * 2.5 + 1.5 });
+    blob.vy += 0.4 * dt; blob.y += blob.vy * dt;
+    if (!pipes.length || pipes[pipes.length - 1].x < W - 190)
+      pipes.push({ x: W, gy: 70 + Math.random() * (H - 140 - GAP - 20), passed: false });
+    pipes.forEach(p => {
+      p.x -= 2.4 * dt;
+      if (!p.passed && p.x + PW < BX) { p.passed = true; score++; }
+      if (BX + BR > p.x && BX - BR < p.x + PW && (blob.y - BR < p.gy || blob.y + BR > p.gy + GAP)) die();
+    });
+    pipes = pipes.filter(p => p.x > -PW - 10);
+    if (blob.y + BR > H - 20 || blob.y - BR < 0) die();
+  }
+  // NRL 2026 mascot (from the supplied SVG, 118x118 viewBox)
+  const MASCOT_FLIP = { x: true, y: false };   // x:true = mirrored left-right, y:true = upside down
+  const MASCOT = new Path2D('M84.9014 0C103.168 0 118.001 14.858 118.001 33.1553V98.333H98.3135V117.999H42.7959C19.1744 117.999 2.37761e-05 98.7925 0 75.1309V19.666H19.6865V0H84.9014ZM13.0156 65.7021H42.3184V36.3379H13.0156V65.7021ZM53.7637 65.7021H83.0674V36.3379H53.7637V65.7021Z');
+  function drawBlob(x, y, vy) {
+    const S = 36 / 118;
+    ctx.save(); ctx.translate(x, y);
+    ctx.rotate(Math.max(-0.4, Math.min(0.6, vy * 0.06)));
+    const w = 1 + Math.sin(t * 0.2) * 0.04; ctx.scale(1 / w, w);
+    ctx.shadowColor = '#FE01AC'; ctx.shadowBlur = 18;
+    ctx.scale(S * (MASCOT_FLIP.x ? -1 : 1), S * (MASCOT_FLIP.y ? -1 : 1)); ctx.translate(-59, -59);
+    ctx.fillStyle = '#FE01AC'; ctx.fill(MASCOT, 'evenodd');
+    ctx.restore();
+  }
+  function drawPipe(p) {
+    const col = ctx.createLinearGradient(p.x, 0, p.x + PW, 0);
+    col.addColorStop(0, 'rgba(0,251,255,0.15)'); col.addColorStop(0.5, 'rgba(0,251,255,0.45)'); col.addColorStop(1, 'rgba(0,251,255,0.15)');
+    ctx.fillStyle = col; ctx.strokeStyle = '#00fbff'; ctx.lineWidth = 2;
+    ctx.shadowColor = '#00fbff'; ctx.shadowBlur = 10;
+    ctx.fillRect(p.x, 0, PW, p.gy); ctx.strokeRect(p.x, 0, PW, p.gy);
+    ctx.fillRect(p.x, p.gy + GAP, PW, H - p.gy - GAP); ctx.strokeRect(p.x, p.gy + GAP, PW, H - p.gy - GAP);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#00fbff'; ctx.fillRect(p.x - 4, p.gy - 12, PW + 8, 12); ctx.fillRect(p.x - 4, p.gy + GAP, PW + 8, 12);
+  }
+  function fDraw() {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#04081a'); bg.addColorStop(1, '#0b1636');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    stars.forEach(st => { st.x -= st.s * 0.25; if (st.x < 0) st.x = W; ctx.fillStyle = 'rgba(180,240,255,' + (0.25 + st.s * 0.25) + ')'; ctx.fillRect(st.x, st.y, st.s, st.s); });
+    ctx.strokeStyle = 'rgba(57,231,255,0.07)'; ctx.lineWidth = 1;
+    for (let i = -gx; i < W; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke(); }
+    for (let j = 0; j < H; j += 30) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(W, j); ctx.stroke(); }
+    pipes.forEach(drawPipe);
+    ctx.fillStyle = '#0b2540'; ctx.fillRect(0, H - 20, W, 20);
+    ctx.fillStyle = '#00fbff'; ctx.fillRect(0, H - 20, W, 2);
+    ctx.fillStyle = 'rgba(0,251,255,0.35)';
+    for (let i = -gx * 2; i < W; i += 30) ctx.fillRect(i, H - 10, 14, 2);
+  }
+
+  // ---------- RACER ----------
+  const LANES = [100, 180, 260];
+  let car, lane, items, speed, off, timer, dist;
+  function rReset() { lane = 1; car = { x: LANES[1] }; items = []; speed = 4; off = 0; timer = 60; dist = 0; score = 0; }
+  function rUpdate(dt) {
+    if (Math.random() < 0.8) fx.push({ x: car.x + (Math.random() - 0.5) * 16, y: H - 54, vx: (Math.random() - 0.5) * 0.6, vy: speed * 0.5 + Math.random(), l: 1, c: '#00fbff', r: Math.random() * 2 + 1 });
+    speed += 0.003 * dt; off = (off + speed * dt) % 40; dist += speed * dt;
+    car.x += (LANES[lane] - car.x) * 0.25 * dt;
+    timer -= speed * dt;
+    if (timer <= 0) {
+      timer = 130 + Math.random() * 60;
+      const l = Math.floor(Math.random() * 3);
+      if (Math.random() < 0.55) for (let k = 0; k < 3; k++) items.push({ type: 'coin', x: LANES[l], y: -30 - k * 50 });
+      else items.push({ type: 'bar', x: LANES[l], y: -40 });
+    }
+    items.forEach(it => {
+      it.y += speed * dt;
+      if (it.type === 'bar' && Math.abs(it.x - car.x) < 36 && it.y + 16 > H - 118 && it.y - 16 < H - 54) die();
+      if (it.type === 'coin' && Math.abs(it.x - car.x) < 32 && Math.abs(it.y - (H - 86)) < 38) { it.dead = true; score += 10; burst(it.x, it.y, '#ffd23c', 12, 3); }
+    });
+    items = items.filter(it => !it.dead && it.y < H + 40);
+    score = Math.max(score, 0);
+  }
+  function donut(x, y, r) {   // spinning golden charge ring
+    ctx.save(); ctx.translate(x, y);
+    ctx.scale(0.35 + 0.65 * Math.abs(Math.cos(t * 0.06 + y * 0.02)), 1);
+    ctx.shadowColor = '#ffd23c'; ctx.shadowBlur = 16;
+    const g = ctx.createLinearGradient(-r, -r, r, r);
+    g.addColorStop(0, '#fff3b0'); g.addColorStop(0.5, '#ffc928'); g.addColorStop(1, '#c88a00');
+    ctx.strokeStyle = g; ctx.lineWidth = r * 0.6;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.7, 0, 7); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.7, 3.5, 4.6); ctx.stroke();
+    ctx.restore();
+  }
+  function bar(x, y) {
+    ctx.save(); ctx.shadowColor = '#ff2d95'; ctx.shadowBlur = 12;
+    ctx.fillStyle = '#ff2d95'; ctx.fillRect(x - 32, y - 14, 64, 28);
+    ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
+    for (let i = -32; i < 32; i += 16) { ctx.beginPath(); ctx.moveTo(x + i, y - 14); ctx.lineTo(x + i + 8, y - 14); ctx.lineTo(x + i, y + 14); ctx.lineTo(x + i - 8, y + 14); ctx.fill(); }
+    ctx.restore();
+  }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+  function drawCar() {   // top-down NRL robot: 4 wheels, clear deck, red panels, servo + claw
+    const cx = car.x, y0 = H - 124;
+    ctx.save(); ctx.translate(cx, y0);
+    // wheels
+    [[-30, 14], [19, 14], [-30, 46], [19, 46]].forEach(w => {
+      ctx.fillStyle = '#15191f'; rr(w[0], w[1], 12, 24, 4); ctx.fill();
+      ctx.fillStyle = '#f2f6fa'; rr(w[0] + 4, w[1] + 4, 4, 16, 2); ctx.fill();
+    });
+    // chassis plate + glow
+    ctx.shadowColor = '#00fbff'; ctx.shadowBlur = 16;
+    ctx.fillStyle = '#aab6c4'; rr(-19, 12, 38, 58, 5); ctx.fill();
+    ctx.shadowBlur = 0;
+    // clear acrylic deck
+    ctx.fillStyle = 'rgba(190,225,255,0.35)'; ctx.strokeStyle = '#e8f7ff'; ctx.lineWidth = 1.2;
+    rr(-16, 30, 32, 38, 4); ctx.fill(); ctx.stroke();
+    // electronics
+    ctx.fillStyle = '#1f8f6b'; ctx.fillRect(-12, 46, 24, 16);
+    ctx.fillStyle = '#1b5bd6'; ctx.fillRect(-4, 50, 9, 5);
+    ctx.fillStyle = '#ff9b1a'; ctx.fillRect(-12, 36, 3, 8); ctx.fillRect(9, 36, 3, 8);
+    ctx.fillStyle = '#ffee00'; ctx.fillRect(-1, 63, 5, 3);
+    // red panels
+    ctx.fillStyle = '#ff2a3a'; ctx.shadowColor = '#ff2a3a'; ctx.shadowBlur = 8;
+    rr(-17, 22, 7, 20, 2); ctx.fill(); rr(10, 22, 7, 20, 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // servo
+    ctx.fillStyle = '#0d2b5e'; rr(-7, 14, 14, 13, 3); ctx.fill();
+    ctx.fillStyle = '#2f7bff'; ctx.fillRect(-4, 17, 8, 4);
+    // claw
+    ctx.fillStyle = '#dfe8f0'; ctx.strokeStyle = '#00fbff'; ctx.lineWidth = 1;
+    [[-11, -1], [5, 1]].forEach(c => {
+      rr(c[0], 0, 6, 17, 2); ctx.fill(); ctx.stroke();
+      ctx.fillRect(c[0] + (c[1] < 0 ? 4 : -3), 0, 5, 4);
+    });
+    ctx.restore();
+  }
+  function rDraw() {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#04081a'); bg.addColorStop(1, '#0a1230');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    const road = ctx.createLinearGradient(50, 0, 310, 0);
+    road.addColorStop(0, '#0a1830'); road.addColorStop(0.5, '#0f2442'); road.addColorStop(1, '#0a1830');
+    ctx.fillStyle = road; ctx.fillRect(50, 0, 260, H);
+    ctx.shadowColor = '#00fbff'; ctx.shadowBlur = 14; ctx.fillStyle = '#00fbff';
+    ctx.fillRect(48, 0, 3, H); ctx.fillRect(309, 0, 3, H); ctx.shadowBlur = 0;
+    for (let y = -40 + off; y < H; y += 40) {
+      ctx.fillStyle = 'rgba(0,251,255,0.55)'; ctx.fillRect(139, y, 3, 22); ctx.fillRect(219, y, 3, 22);
+      ctx.fillStyle = (Math.floor(y / 40) % 2) ? '#ff2d95' : '#00fbff'; ctx.fillRect(40, y, 6, 14); ctx.fillRect(314, y, 6, 14);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,' + Math.min(0.25, (speed - 4) * 0.05) + ')'; ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) { const lx = 62 + (i * 61) % 236, ly = (off * 4 + i * 97) % H; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx, ly + speed * 4); ctx.stroke(); }
+    items.forEach(it => it.type === 'coin' ? donut(it.x, it.y, 14) : bar(it.x, it.y));
+    drawCar();
+  }
+
+  // ---------- SHARED ----------
+  function die() {
+    state = 'over'; best[mode] = Math.max(best[mode], score); shake = 12;
+    mode === 'flappy' ? burst(BX, blob.y, '#FE01AC', 30, 5) : burst(car.x, H - 90, '#00fbff', 30, 5);
+  }
+  function reset() { fx = []; mode === 'flappy' ? fReset() : rReset(); }
+  function start() { reset(); state = 'play'; }
+  function flap() { if (state !== 'play') { start(); if (mode === 'flappy') blob.vy = -6.6; return; } if (mode === 'flappy') blob.vy = -6.6; }
+  function move(d) { if (mode !== 'race') return; if (state !== 'play') { start(); return; } lane = Math.max(0, Math.min(2, lane + d)); }
+
+  function overlay(lines) {
+    ctx.fillStyle = 'rgba(3,7,19,0.7)'; ctx.fillRect(0, H / 2 - 70, W, 140);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#00fbff';
+    ctx.font = '700 22px Orbitron, monospace'; ctx.fillText(lines[0], W / 2, H / 2 - 18);
+    ctx.fillStyle = '#e8f7ff'; ctx.font = '12px "Share Tech Mono", monospace';
+    ctx.fillText(lines[1], W / 2, H / 2 + 14); ctx.fillText(lines[2], W / 2, H / 2 + 38);
+  }
+  function draw() {
+    ctx.save();
+    if (shake > 0.5) { ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); shake *= 0.88; }
+    mode === 'flappy' ? fDraw() : rDraw();
+    if (mode === 'flappy' && !(state === 'over' && shake > 0)) drawBlob(BX, blob.y, blob.vy);
+    fx.forEach(p => { ctx.globalAlpha = Math.max(0, p.l); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.l + 0.5, 0, 7); ctx.fill(); });
+    ctx.globalAlpha = 1; ctx.restore();
+    ctx.textAlign = 'left'; ctx.fillStyle = '#e8f7ff'; ctx.font = '700 18px Orbitron, monospace';
+    ctx.fillText(score, 14, 30);
+    ctx.textAlign = 'right'; ctx.font = '12px "Share Tech Mono", monospace'; ctx.fillStyle = '#ffee00';
+    ctx.fillText('BEST ' + best[mode], W - 14, 28);
+    const go = mode === 'flappy' ? 'SPACE / TAP TO FLAP' : '◀ ▶ OR TAP SIDES TO STEER';
+    if (state === 'idle') overlay([mode === 'flappy' ? 'FLAPPY BLOB' : 'VOLTIXY RACER', go, 'PRESS TO START']);
+    if (state === 'over') overlay(['GAME OVER', 'SCORE ' + score + '  ·  BEST ' + best[mode], 'PRESS TO RETRY']);
+  }
+  function loop(ts) {
+    const dt = Math.min((ts - last) / 16.67 || 1, 2.5); last = ts; t++;
+    fx.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.l -= 0.035 * dt; }); fx = fx.filter(p => p.l > 0);
+    if (state === 'play') mode === 'flappy' ? fUpdate(dt) : rUpdate(dt);
+    draw(); requestAnimationFrame(loop);
+  }
+
+  function setMode(m) {
+    mode = m; state = 'idle'; reset();
+    document.querySelectorAll('.game-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+    pad.classList.toggle('show', m === 'race');
+    help.textContent = m === 'flappy'
+      ? 'Space / click / tap to flap · dodge the pillars'
+      : 'Arrow keys / A D / tap sides · grab donut charges, dodge barriers';
+  }
+  document.querySelectorAll('.game-tab').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+  function inView() { const r = sec.getBoundingClientRect(); return r.top < innerHeight * 0.8 && r.bottom > innerHeight * 0.2; }
+  document.addEventListener('keydown', e => {
+    if (!inView()) return;
+    const k = e.key;
+    if (k === ' ' || k === 'ArrowUp') { e.preventDefault(); mode === 'flappy' ? flap() : (state !== 'play' && start()); }
+    else if (k === 'ArrowLeft' || k === 'a' || k === 'A') { e.preventDefault(); move(-1); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { e.preventDefault(); move(1); }
+  });
+  cv.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (mode === 'flappy') flap();
+    else { const x = e.offsetX / cv.clientWidth; state !== 'play' ? start() : move(x < 0.5 ? -1 : 1); }
+  });
+  document.getElementById('padL').addEventListener('pointerdown', () => move(-1));
+  document.getElementById('padR').addEventListener('pointerdown', () => move(1));
+
+  setMode('flappy');
+  requestAnimationFrame(loop);
+})();
+</script>
 </body>
 </html>
-<>
