@@ -2164,7 +2164,7 @@
     document.querySelectorAll('.game-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
     pad.classList.toggle('show', m === 'race');
     help.textContent = sim
-      ? 'Tap the card to open the NRL Simulator · drag over it to look around'
+      ? ''
       : m === 'flappy'
         ? 'Space / click / tap to flap · dodge the pillars'
         : 'Arrow keys / A D / tap sides · grab donut charges, dodge barriers';
