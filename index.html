@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TEAM MECHAMINDS</title>
+  <link rel="icon" type="image/jpg" href="mecha.jpg">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -976,6 +977,54 @@
   .game-pad.show { display: flex; }
   .game-pad button { width: 90px; font-size: 1.1rem; padding: 12px 0; }
   @media (max-width: 800px) { #games { padding: 60px 24px; } }
+
+  /* ===== NRL SIMULATOR CARD (portrait, live 3D) ===== */
+  .sim-card {
+    position: relative; display: none; width: 100%; max-width: 360px; aspect-ratio: 2 / 3;
+    border-radius: 20px; overflow: hidden; isolation: isolate; cursor: pointer;
+    text-decoration: none; color: #e8f7ff; -webkit-tap-highlight-color: transparent;
+    background: radial-gradient(120% 80% at 50% 0%, #10224a 0%, #050b1d 70%);
+    border: 1px solid rgba(57, 231, 255, 0.35);
+    box-shadow: 0 0 0 0 rgba(57, 231, 255, 0.4), 0 20px 50px rgba(0, 0, 0, 0.45);
+    animation: simGlow 3s ease-in-out infinite;
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .sim-card.show { display: block; }
+  .sim-card:hover { transform: translateY(-4px) scale(1.015); }
+  @keyframes simGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(57, 231, 255, 0.25), 0 20px 50px rgba(0, 0, 0, 0.45); }
+    50% { box-shadow: 0 0 36px 2px rgba(57, 231, 255, 0.35), 0 20px 50px rgba(0, 0, 0, 0.45); }
+  }
+  #simCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+  .sim-shade {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(3, 7, 19, 0.55) 0%, transparent 22%, transparent 52%, rgba(3, 7, 19, 0.92) 100%);
+  }
+  .sim-top {
+    position: absolute; z-index: 2; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase;
+  }
+  .sim-live { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 40px; background: rgba(57, 231, 255, 0.12); border: 1px solid rgba(57, 231, 255, 0.35); backdrop-filter: blur(8px); }
+  .sim-live i { width: 7px; height: 7px; border-radius: 50%; background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; animation: pulse 1.4s ease-in-out infinite; }
+  .sim-tag { color: #b6cfdf; }
+  .sim-bottom { position: absolute; z-index: 2; left: 18px; right: 18px; bottom: 18px; text-align: center; }
+  .sim-eyebrow { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; letter-spacing: 0.4em; text-transform: uppercase; color: #00fbff; margin-bottom: 6px; }
+  .sim-title {
+    font-family: 'Orbitron', monospace; font-size: 1.7rem; font-weight: 900; line-height: 1.05; letter-spacing: 0.04em;
+    background: linear-gradient(90deg, #ff4a4a, #ffffff 50%, #5b95ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 18px rgba(57, 231, 255, 0.3));
+  }
+  .sim-sub { font-size: 0.95rem; color: #b6cfdf; margin: 6px 0 14px; }
+  .sim-cta {
+    display: inline-flex; align-items: center; gap: 10px; padding: 12px 30px; border-radius: 60px;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: #030713; font-weight: 700;
+    background: linear-gradient(135deg, #ff4a4a, #00fbff 60%, #5b95ff); border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 30px rgba(57, 231, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    animation: simCta 1.8s ease-in-out infinite;
+  }
+  .sim-cta span { display: inline-block; transition: transform 0.3s; }
+  .sim-card:hover .sim-cta span { transform: translateX(5px); }
+  @keyframes simCta { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 </style>
 </head>
 <body>
@@ -1172,11 +1221,27 @@
     <p class="section-sub">Take a break, beat the high score.</p>
   </div>
   <div class="game-tabs">
-    <button class="btn btn-ghost game-tab active" data-mode="flappy">Flappy Blob</button>
+    <button class="btn btn-ghost game-tab active" data-mode="sim">NRL Simulator</button>
+    <button class="btn btn-ghost game-tab" data-mode="flappy">Flappy Blob</button>
     <button class="btn btn-ghost game-tab" data-mode="race">Voltixy Racer</button>
   </div>
   <div class="game-frame">
-    <canvas id="gameCanvas"></canvas>
+    <!-- NRL Simulator: live 3D card, click = go to the simulator site -->
+    <a id="simCard" class="sim-card show" href="https://mechaminds-hyperdrive.vercel.app" aria-label="Open the NRL Simulator">
+      <canvas id="simCanvas"></canvas>
+      <div class="sim-shade"></div>
+      <div class="sim-top">
+        <span class="sim-live"><i></i></span>
+        <span class="sim-tag">NRL 2026</span>
+      </div>
+      <div class="sim-bottom">
+        <div class="sim-eyebrow">Hyperdrive</div>
+        <div class="sim-title">NRL SIMULATOR</div>
+        <div class="sim-sub"></div>
+        <div class="sim-cta">Play now <span>▶</span></div>
+      </div>
+    </a>
+    <canvas id="gameCanvas" style="display:none"></canvas>
     <div class="game-pad" id="gamePad">
       <button class="btn btn-ghost" id="padL">◀</button>
       <button class="btn btn-ghost" id="padR">▶</button>
@@ -1641,14 +1706,257 @@
     observer.observe(card);
   });
 </script>
+
+<!-- ===== NRL SIMULATOR 3D CARD ===== -->
+<script>
+(function () {
+  const card = document.getElementById('simCard'), cv = document.getElementById('simCanvas');
+  if (!card || !cv || typeof THREE === 'undefined') return;
+
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+  } catch (e) { return; }              // no WebGL: the card still works as a plain link
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const C = h => new THREE.Color(h).convertSRGBToLinear();
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = x => x * x * (3 - 2 * x);
+  const mat = (c, m, r, extra) => new THREE.MeshStandardMaterial(Object.assign({ color: C(c), metalness: m, roughness: r }, extra || {}));
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(C(0x050b1d), 22, 60);
+  const cam = new THREE.PerspectiveCamera(38, 2 / 3, 0.1, 120);
+
+  // ---- lights ----
+  scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x1a1c2c, 0.7));
+  const sun = new THREE.DirectionalLight(0xfff1de, 1.7);
+  sun.position.set(6, 14, 4); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  const sc = sun.shadow.camera; sc.left = -10; sc.right = 10; sc.top = 10; sc.bottom = -10; sc.near = 1; sc.far = 40;
+  sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
+  scene.add(sun);
+  const redL = new THREE.PointLight(C(0xff3030), 1.6, 40); redL.position.set(-9, 5, -6); scene.add(redL);
+  const blueL = new THREE.PointLight(C(0x2f6bff), 1.6, 40); blueL.position.set(9, 5, 12); scene.add(blueL);
+  const rimL = new THREE.PointLight(C(0x00fbff), 1.0, 40); rimL.position.set(0, 8, -12); scene.add(rimL);
+
+  // ---- arena floor (foam tiles, red + blue start zones) ----
+  function tex(w, h, fn) { const c = document.createElement('canvas'); c.width = w; c.height = h; fn(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t; }
+  const tile = tex(512, 512, (x, w) => {
+    x.fillStyle = '#8f9096'; x.fillRect(0, 0, w, w); const n = w / 6;
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) { const v = 134 + Math.floor(Math.random() * 18); x.fillStyle = 'rgb(' + v + ',' + (v + 1) + ',' + (v + 6) + ')'; x.fillRect(i * n, j * n, n, n); }
+    x.strokeStyle = '#5c5d66'; x.lineWidth = 4; for (let i = 0; i <= 6; i++) { x.beginPath(); x.moveTo(i * n, 0); x.lineTo(i * n, w); x.moveTo(0, i * n); x.lineTo(w, i * n); x.stroke(); }
+  });
+  const ARENA = 36.6, AZ = 12.2;                        // 1 unit = 10 cm; arena centre sits ahead of the robot
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ARENA, ARENA), new THREE.MeshStandardMaterial({ map: tile, roughness: 0.9, metalness: 0 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0, AZ); floor.receiveShadow = true; scene.add(floor);
+  const hall = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: C(0x0a0e1c), roughness: 0.45, metalness: 0.5 }));
+  hall.rotation.x = -Math.PI / 2; hall.position.y = -0.05; hall.receiveShadow = true; scene.add(hall);
+  const zone = (cx, cz, w, d, col) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: C(col), transparent: true, opacity: 0.82 })); m.rotation.x = -Math.PI / 2; m.position.set(cx, 0.02, cz); scene.add(m); };
+  zone(0, -3.05 + 0.0, 12.2, 6.1, 0xe5242b);            // red start zone (robot starts here)
+  zone(0, AZ * 2 - 6.1 - 3.05 + 6.1, 12.2, 6.1, 0x2563ff); // blue start zone (far end)
+  const grid = new THREE.GridHelper(120, 60, C(0x00fbff), C(0x1d3a66)); grid.position.y = -0.03; grid.material.transparent = true; grid.material.opacity = 0.35; scene.add(grid);
+
+  // ---- rods + stacked cores + vault with golden cores ----
+  const rodM = mat(0xe5242b, 0.3, 0.4);
+  [-6.1, 0, 6.1].forEach(x => { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.2, 14), rodM); r.position.set(x, 0.7, 7.2); r.castShadow = true; scene.add(r); });
+  const coreGeo = new THREE.TorusGeometry(0.375, 0.125, 14, 28);
+  const coreMat = { r: mat(0xe5242b, 0.2, 0.32), b: mat(0x2563ff, 0.2, 0.32), g: mat(0xffc928, 0.7, 0.2, { emissive: C(0x553300), emissiveIntensity: 0.35 }) };
+  function core(k, x, y, z) { const m = new THREE.Mesh(coreGeo, coreMat[k]); m.rotation.x = Math.PI / 2; m.position.set(x, y, z); m.castShadow = true; scene.add(m); return m; }
+  core('r', 0, 0.32, 7.2); core('r', 0, 0.57, 7.2); core('r', -6.1, 0.32, 7.2);
+  [[-4.5, 3.2, 'b'], [4.2, 2.4, 'r'], [5.8, 4.2, 'b'], [-3.6, 5.4, 'r']].forEach(a => core(a[2], a[0], 0.125, a[1]));
+  const vx = -7.6, vz = -1.2;                          // golden-core vault (locked until Starburst)
+  const vault = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.5, 1.1), new THREE.MeshStandardMaterial({ color: C(0xff5050), transparent: true, opacity: 0.28, roughness: 0.1, metalness: 0.1, depthWrite: false }));
+  vault.position.set(vx, 0.62 + 0.75, vz); scene.add(vault);
+  for (let i = 0; i < 6; i++) core('g', vx, 0.745 + 0.25 * i, vz);
+  const lock = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.5), new THREE.MeshBasicMaterial({ color: C(0xff2a2a) })); lock.position.set(vx, 2.26, vz); scene.add(lock);
+
+  // ---- floating dust ----
+  const N = 140, dg = new THREE.BufferGeometry(), dp = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) { dp[i * 3] = (Math.random() - 0.5) * 30; dp[i * 3 + 1] = Math.random() * 12; dp[i * 3 + 2] = (Math.random() - 0.5) * 30 + 6; }
+  dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+  const dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.12, color: C(0xbfd0ff), transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(dust);
+
+  // ---- robot: the real CAD model (robot-model.js); simple stand-in only if it cannot load ----
+  // front = +z. The crane swings, the claw hangs from the wrist and stays upright, and the fingers
+  // open / close around the core at the claw's real pinch point.
+  const robot = new THREE.Group(); robot.position.set(0, 0, -3); scene.add(robot);
+  let rig = null, rigT = 0;
+  const heldCore = core('r', 0, 0.15, 0); heldCore.visible = false;
+  const gv = new THREE.Vector3(), pickPos = new THREE.Vector3(), off = new THREE.Vector3();
+  const ARM = 57 * Math.PI / 180, CLAWA = 35 * Math.PI / 180, FLOOR_Y = 0.15;
+
+  const hslOf = c => { const o = {}; new THREE.Color(c[0], c[1], c[2]).getHSL(o); o.h *= 360; return o; };
+  const isPink = c => { const o = hslOf(c); return o.s > 0.35 && o.h >= 315 && o.h <= 348; };
+  const colA = a => new THREE.Color(a[0], a[1], a[2]).convertSRGBToLinear();
+  function plateTexture(txt) {
+    return tex(256, 96, (x, w, h) => { x.fillStyle = '#f4f4f2'; x.fillRect(0, 0, w, h); x.fillStyle = '#e5242b'; x.fillRect(0, h - 16, w, 16); x.fillStyle = '#111'; x.font = '900 70px "Orbitron", Verdana, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, w / 2, (h - 16) / 2 + 3); });
+  }
+
+  async function buildReal() {
+    const D = window.NRL_ROBOT;
+    if (!D || typeof DecompressionStream === 'undefined') return null;
+    const u = Uint8Array.from(atob(D.RB), ch => ch.charCodeAt(0));
+    const ab = await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer();
+    const RM = D.RM, q = RM.sc / 65535, T = m => new THREE.Vector3(-(m[0] - 0.614), m[2] + 0.0167, m[1] + 0.153);
+    const P = { wLF: RM.wp.wLF, wLB: RM.wp.wLB, wRF: RM.wp.wRF, wRB: RM.wp.wRB, C: RM.hornC, fL: RM.piv.fL, fR: RM.piv.fR }, pl = {};
+    for (const k in P) pl[k] = T(P[k]);
+    pl.K = new THREE.Vector3(0, 0.195, -0.075);              // wrist: the claw hangs here
+    const G = {}; ['S', 'wLF', 'wLB', 'wRF', 'wRB', 'C', 'K', 'fL', 'fR'].forEach(k => G[k] = new THREE.Group());
+    const team = C(0xe5242b), V0 = new THREE.Vector3();
+    RM.parts.forEach(p => {
+      const qa = new Uint16Array(ab, p.o, p.v * 3); let ia = new Uint16Array(ab, p.o + p.v * 6, p.f * 3);
+      const raw = new Float32Array(p.v * 3); let miny = 1e9;
+      for (let i = 0; i < p.v; i++) {
+        const x = RM.mn[0] + qa[i * 3] * q, y = RM.mn[1] + qa[i * 3 + 1] * q, z = RM.mn[2] + qa[i * 3 + 2] * q;
+        raw[i * 3] = -(x - 0.614); raw[i * 3 + 1] = z + 0.0167; raw[i * 3 + 2] = y + 0.153; miny = Math.min(miny, raw[i * 3 + 1]);
+      }
+      let g = p.g; if (g === 'C' && miny >= 0.15) g = 'K';       // servo + plate on top of the arm belong to the claw
+      if (p.v === 1229) {                                          // drop the old printed number on the rear plate
+        const keep = []; for (let i = 0; i < ia.length; i += 3) { if (raw[ia[i] * 3 + 2] > 0.155 && raw[ia[i + 1] * 3 + 2] > 0.155 && raw[ia[i + 2] * 3 + 2] > 0.155) continue; keep.push(ia[i], ia[i + 1], ia[i + 2]); }
+        ia = new Uint16Array(keep);
+      }
+      const o = pl[g] || V0, pos = new Float32Array(p.v * 3);
+      for (let i = 0; i < p.v; i++) { pos[i * 3] = raw[i * 3] - o.x; pos[i * 3 + 1] = raw[i * 3 + 1] - o.y; pos[i * 3 + 2] = raw[i * 3 + 2] - o.z; }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setIndex(new THREE.BufferAttribute(ia, 1));
+      const pink = isPink(p.c), m = new THREE.MeshStandardMaterial({ color: pink ? team.clone() : colA(p.c), flatShading: true, metalness: 0.25, roughness: 0.5, side: THREE.DoubleSide });
+      if (pink) m.emissive = team.clone().multiplyScalar(0.5);
+      const mesh = new THREE.Mesh(geo, m); mesh.castShadow = true; mesh.receiveShadow = true; G[g].add(mesh);
+    });
+    const root = new THREE.Group(); root.add(G.S);
+    ['wLF', 'wLB', 'wRF', 'wRB'].forEach(k => { G[k].position.copy(pl[k]); root.add(G[k]); });
+    G.C.position.copy(pl.C); root.add(G.C);
+    G.K.position.copy(pl.K).sub(pl.C); G.C.add(G.K);
+    ['fL', 'fR'].forEach(k => { G[k].position.copy(pl[k]).sub(pl.K); G.K.add(G[k]); });
+    const grip = new THREE.Object3D();                              // centre of the finger gap = where a core is pinched
+    grip.position.copy(T([0.614, -0.33, 0.155])).sub(pl.K).add(new THREE.Vector3(0, 0, 0.02)); G.K.add(grip);
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.042), new THREE.MeshStandardMaterial({ map: plateTexture('132'), roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    plate.position.set(0, 0.076, 0.1625); root.add(plate);
+    const model = new THREE.Group(); model.scale.setScalar(10); model.rotation.y = Math.PI; model.add(root);   // 1 unit = 10 cm, face the arena
+    return {
+      root: model, grip, wheels: [G.wLF, G.wLB, G.wRF, G.wRB],
+      setPose(crane, open) { G.C.rotation.x = -crane * ARM; G.K.rotation.x = crane * ARM; G.fL.rotation.y = -open * CLAWA; G.fR.rotation.y = open * CLAWA; }
+    };
+  }
+
+  function buildPrimitive() {                                       // fallback if the model file is missing
+    const R = new THREE.Group();
+    const gray = mat(0xaab6c4, 0.55, 0.4), dark = mat(0x14181f, 0.2, 0.7), white = mat(0xf2f6fa, 0.1, 0.6), redM = mat(0xe5242b, 0.3, 0.4), blueM = mat(0x2563ff, 0.3, 0.4);
+    const acr = new THREE.MeshStandardMaterial({ color: C(0xbee1ff), transparent: true, opacity: 0.32, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide });
+    const box = (w, h, d, m, x, y, z, parent) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; b.receiveShadow = true; (parent || R).add(b); return b; };
+    box(3.4, 0.3, 4.4, gray, 0, 0.85, 0); box(2.8, 0.08, 3.1, acr, 0, 1.75, 0.1);
+    [[-1.3, -1.3], [1.3, -1.3], [-1.3, 1.5], [1.3, 1.5]].forEach(p => box(0.14, 0.85, 0.14, white, p[0], 1.3, p[1]));
+    box(1.7, 0.1, 1.1, mat(0x1f8f6b, 0.2, 0.6), 0, 1.35, -0.5); box(0.12, 0.9, 1.0, redM, -1.55, 1.45, 0.2); box(0.12, 0.9, 1.0, redM, 1.55, 1.45, 0.2);
+    const wheels = [];
+    [-1, 1].forEach(sx => [-1.4, 1.5].forEach(z => { const g = new THREE.Group(); g.position.set(sx * 2.05, 0.8, z); const w = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.55, 28), dark); w.rotation.z = Math.PI / 2; w.castShadow = true; g.add(w); R.add(g); wheels.push(g); }));
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.64), new THREE.MeshStandardMaterial({ map: plateTexture('132'), roughness: 0.5 })); plate.position.set(0, 1.2, -2.22); plate.rotation.y = Math.PI; R.add(plate);
+    const PIV = new THREE.Vector3(0, 1.25, -1.2), ARMV = new THREE.Vector3(0, 1.6, 1.4), TH = 1.0877;
+    box(0.6, 0.5, 0.6, dark, 0, 1.15, -1.2);
+    const armG = new THREE.Group(); armG.position.copy(PIV); R.add(armG);
+    const arm = box(0.4, 0.4, ARMV.length(), gray, 0, ARMV.y / 2, ARMV.z / 2, armG); arm.rotation.x = -Math.atan2(ARMV.y, ARMV.z);
+    const claw = new THREE.Group(); R.add(claw); box(1.0, 0.5, 0.7, mat(0x0d2b5e, 0.3, 0.5), 0, 0, 0, claw);
+    const fingers = [-1, 1].map(s => { const g = new THREE.Group(); g.position.set(s * 0.42, -0.1, 0.3); claw.add(g); box(0.24, 0.3, 1.5, white, 0, 0, 0.75, g); return g; });
+    const grip = new THREE.Object3D(); grip.position.set(0, -0.3, 1.0); claw.add(grip);
+    return {
+      root: R, grip, wheels,
+      setPose(crane, open) {
+        const th = crane * TH, y = ARMV.y * Math.cos(th) - ARMV.z * Math.sin(th), z = ARMV.y * Math.sin(th) + ARMV.z * Math.cos(th);
+        armG.rotation.x = th; claw.position.set(0, PIV.y + y, PIV.z + z);
+        const op = lerp(0.04, 0.62, open); fingers[0].rotation.y = -op; fingers[1].rotation.y = op;
+      }
+    };
+  }
+
+  function install(r) {
+    rig = r; robot.add(r.root); robot.updateMatrixWorld(true); rigT = performance.now();
+    r.setPose(1, 1); robot.updateMatrixWorld(true);                 // crane down, claw open: where the floor core waits
+    r.grip.getWorldPosition(pickPos); pickPos.y = FLOOR_Y;
+    r.grip.getWorldPosition(gv); off.copy(pickPos).sub(gv);           // the core keeps this offset to the pinch point while carried
+    heldCore.visible = true;
+  }
+  (function load() {
+    const s = document.createElement('script'); s.src = 'robot-model.js';
+    s.onload = () => buildReal().then(r => install(r || buildPrimitive())).catch(() => install(buildPrimitive()));
+    s.onerror = () => install(buildPrimitive());
+    document.head.appendChild(s);
+  })();
+
+  // pick-and-place loop. crane: 0 = raised, 1 = fully down.  open: 1 = fingers spread, 0 = closed.
+  // The core is only gripped once the fingers have closed on it (finger angle <= 14/90) and lets go as soon as they open past 26/90.
+  const CYC = 7.6, GRIP_CLOSE = 14 / 90, GRIP_OPEN = 26 / 90;
+  function seg(k, a, b, x0, x1) { return lerp(x0, x1, smooth(clamp((k - a) / (b - a), 0, 1))); }
+  function pose(t) {
+    if (!rig) return;
+    const k = t % CYC; let c, o, closing = false;
+    if (k < 1.4) { c = seg(k, 0, 1.4, 0, 1); o = seg(k, 0, 1.4, 0.15, 1); }                  // lower the crane, spread the fingers
+    else if (k < 2.0) { c = 1; o = seg(k, 1.4, 2.0, 1, 0); closing = true; }                   // fingers close on the core
+    else if (k < 3.6) { c = seg(k, 2.0, 3.6, 1, 0.35); o = 0; }                               // lift it
+    else if (k < 4.2) { c = 0.35; o = 0; }
+    else if (k < 5.8) { c = seg(k, 4.2, 5.8, 0.35, 1); o = 0; }                                // set it back down
+    else if (k < 6.4) { c = 1; o = seg(k, 5.8, 6.4, 0, 1); }                                   // fingers open, core is released
+    else { c = seg(k, 6.4, CYC, 1, 0); o = seg(k, 6.4, CYC, 1, 0.15); }
+    rig.setPose(c, o); robot.updateMatrixWorld(true);
+    // held from the moment the fingers have closed on it until they open past the release angle
+    const held = (k >= 1.4 && k < 6.4) && (k >= 2.0 || o <= GRIP_CLOSE) && (k < 5.8 || o < GRIP_OPEN);
+    rig.grip.getWorldPosition(gv);
+    heldCore.position.copy(held ? gv.add(off) : pickPos);
+    heldCore.position.y = Math.max(0.125, heldCore.position.y);
+    const s = clamp((performance.now() - rigT) / 700, 0, 1);
+    robot.scale.setScalar(0.001 + smooth(s) * 0.999);
+  }
+
+  // ---- camera: slow orbit + hero cuts, pointer parallax, scroll parallax ----
+  let ptrYaw = 0, ptrYawT = 0, ptrPitchT = 0, ptrPitch = 0;
+  card.addEventListener('pointermove', e => { const r = card.getBoundingClientRect(); ptrYawT = ((e.clientX - r.left) / r.width - 0.5) * 1.1; ptrPitchT = ((e.clientY - r.top) / r.height - 0.5) * 0.5; });
+  card.addEventListener('pointerleave', () => { ptrYawT = 0; ptrPitchT = 0; });
+  const target = new THREE.Vector3(), tmp = new THREE.Vector3();
+  function camera(t) {
+    ptrYaw += (ptrYawT - ptrYaw) * 0.06; ptrPitch += (ptrPitchT - ptrPitch) * 0.06;
+    const r = card.getBoundingClientRect(), sp = clamp((r.top + r.height / 2) / innerHeight * 2 - 1, -1.2, 1.2);   // scroll position of the card
+    const yaw = 0.55 + t * 0.28 + ptrYaw + sp * 0.7;
+    const radius = 12.5 + Math.sin(t * 0.5) * 1.3;
+    const height = 3.6 + Math.sin(t * 0.37) * 1.3 + ptrPitch * 3 + (1 - Math.abs(sp)) * 0.6;
+    target.set(0, 1.5, -2.2 + 1.4 + Math.sin(t * 0.3) * 0.5);
+    cam.position.set(Math.sin(yaw) * radius, height, target.z + Math.cos(yaw) * radius);
+    cam.lookAt(target);
+  }
+  let t0 = performance.now(), raf = 0, active = true, vis = true;
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    const t = (now - t0) / 1000;
+    pose(t); camera(t);
+    if (rig) rig.wheels.forEach(w => w.rotation.x += 0.004);
+    robot.position.y = Math.sin(t * 2) * 0.02;
+    const a = dust.geometry.attributes.position; for (let i = 0; i < N; i++) { let y = a.array[i * 3 + 1] + 0.006 * (1 + (i % 5) * 0.3); if (y > 12) y = 0.1; a.array[i * 3 + 1] = y; } a.needsUpdate = true;
+    lock.material.color.copy(C(Math.sin(t * 3) > 0 ? 0xff2a2a : 0x8a1010));
+    renderer.render(scene, cam);
+  }
+  function sync() { const run = active && vis && !document.hidden; if (run && !raf) { raf = requestAnimationFrame(frame); } else if (!run && raf) { cancelAnimationFrame(raf); raf = 0; } }
+  function fit() { const w = card.clientWidth, h = card.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(card); else addEventListener('resize', fit);
+  if (window.IntersectionObserver) new IntersectionObserver(es => { vis = es[0].isIntersecting; sync(); }, { threshold: 0.05 }).observe(card);
+  document.addEventListener('visibilitychange', sync);
+  fit(); pose(0); camera(0); sync();
+  window.simCard = { setActive: v => { active = v; if (v) fit(); sync(); } };
+})();
+</script>
+
 <script>
 (function () {
   const cv = document.getElementById('gameCanvas'), ctx = cv.getContext('2d');
   const W = 360, H = 540, DPR = 2;
   cv.width = W * DPR; cv.height = H * DPR; ctx.scale(DPR, DPR);
   const sec = document.getElementById('games'), pad = document.getElementById('gamePad'), help = document.getElementById('gameHelp');
+  const simCardEl = document.getElementById('simCard');
 
-  let mode = 'flappy', state = 'idle', score = 0, last = 0, t = 0;
+  let mode = 'sim', state = 'idle', score = 0, last = 0, t = 0;
   const best = { flappy: 0, race: 0 };
 
   // ---------- FLAPPY ----------
@@ -1839,6 +2147,7 @@
     if (state === 'over') overlay(['GAME OVER', 'SCORE ' + score + '  ·  BEST ' + best[mode], 'PRESS TO RETRY']);
   }
   function loop(ts) {
+    if (mode === 'sim') { last = ts; requestAnimationFrame(loop); return; }   // simulator tab: the 3D card does its own rendering
     const dt = Math.min((ts - last) / 16.67 || 1, 2.5); last = ts; t++;
     fx.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.l -= 0.035 * dt; }); fx = fx.filter(p => p.l > 0);
     if (state === 'play') mode === 'flappy' ? fUpdate(dt) : rUpdate(dt);
@@ -1846,18 +2155,25 @@
   }
 
   function setMode(m) {
-    mode = m; state = 'idle'; reset();
+    mode = m; state = 'idle';
+    const sim = m === 'sim';
+    cv.style.display = sim ? 'none' : 'block';
+    simCardEl.classList.toggle('show', sim);
+    if (window.simCard) window.simCard.setActive(sim);
+    if (!sim) reset();
     document.querySelectorAll('.game-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
     pad.classList.toggle('show', m === 'race');
-    help.textContent = m === 'flappy'
-      ? 'Space / click / tap to flap · dodge the pillars'
-      : 'Arrow keys / A D / tap sides · grab donut charges, dodge barriers';
+    help.textContent = sim
+      ? 'Tap the card to open the NRL Simulator · drag over it to look around'
+      : m === 'flappy'
+        ? 'Space / click / tap to flap · dodge the pillars'
+        : 'Arrow keys / A D / tap sides · grab donut charges, dodge barriers';
   }
   document.querySelectorAll('.game-tab').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
 
   function inView() { const r = sec.getBoundingClientRect(); return r.top < innerHeight * 0.8 && r.bottom > innerHeight * 0.2; }
   document.addEventListener('keydown', e => {
-    if (!inView()) return;
+    if (!inView() || mode === 'sim') return;
     const k = e.key;
     if (k === ' ' || k === 'ArrowUp') { e.preventDefault(); mode === 'flappy' ? flap() : (state !== 'play' && start()); }
     else if (k === 'ArrowLeft' || k === 'a' || k === 'A') { e.preventDefault(); move(-1); }
@@ -1871,7 +2187,7 @@
   document.getElementById('padL').addEventListener('pointerdown', () => move(-1));
   document.getElementById('padR').addEventListener('pointerdown', () => move(1));
 
-  setMode('flappy');
+  setMode('sim');                 // the simulator is what shows first
   requestAnimationFrame(loop);
 })();
 </script>
